@@ -1,9 +1,10 @@
 """Interface de linha de comando do Sentinela.
 
-    sentinela run            # executa as verificações de todos os contratos
-    sentinela status         # estado atual da plataforma
-    sentinela incidentes     # incidentes abertos (ou --todos)
-    sentinela alcance MODELO # impacto de um modelo no lineage do dbt
+    sentinela run               # executa as verificações de todos os contratos
+    sentinela status            # estado atual da plataforma
+    sentinela incidentes        # incidentes abertos (ou --todos)
+    sentinela alcance MODELO    # impacto de um modelo no lineage do dbt
+    sentinela diagnosticar      # hipóteses de causa raiz de um incidente
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from pathlib import Path
 from sentinela import __version__, store
 from sentinela.config import Config
 from sentinela.contract import carregar_contratos
+from sentinela.diagnosis import diagnosticar, montar_contexto
 from sentinela.durations import humanizar
 from sentinela.lineage import blast_radius, carregar_manifest
 from sentinela.models import Status
@@ -199,6 +201,49 @@ def cmd_alcance(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_diagnosticar(args: argparse.Namespace) -> int:
+    config = Config.from_env()
+    conn = store.conectar(config.dsn)
+    try:
+        incidente = store.buscar_incidente(conn, args.id)
+        if incidente is None:
+            print("Nenhum incidente encontrado (informe um id ou tenha um incidente aberto).")
+            return 1
+
+        manifest = carregar_manifest(args.manifest)
+        contexto = montar_contexto(
+            incidente,
+            historico=store.historico(conn, incidente["dataset"], incidente["check_name"], limite=10),
+            sinais=store.ultimos_status_do_dataset(conn, incidente["dataset"]),
+            manifest=manifest,
+        )
+
+        diagnostico = diagnosticar(contexto, provider=args.provider)
+        store.salvar_diagnostico(conn, int(incidente["id"]), diagnostico.to_dict())
+    finally:
+        conn.close()
+
+    print()
+    print(f"Incidente #{incidente['id']} — {incidente['dataset']} :: {incidente['check_name']}")
+    print(f"Severidade: {incidente['severity']}   Motor: {diagnostico.provider}")
+    if contexto.upstream:
+        print(f"Upstream (suspeitos naturais): {', '.join(contexto.upstream)}")
+    if contexto.blast_radius:
+        print(f"Impacto: {', '.join(contexto.blast_radius)}")
+    print()
+
+    for posicao, hipotese in enumerate(diagnostico.hipoteses, start=1):
+        print(f"{posicao}. [{hipotese.confianca:.0%}] {hipotese.causa}")
+        if hipotese.evidencia:
+            print(f"   evidência: {hipotese.evidencia}")
+        if hipotese.acao:
+            print(f"   ação:      {hipotese.acao}")
+        if hipotese.runbook:
+            print(f"   runbook:   {hipotese.runbook}")
+
+    return 0
+
+
 # --------------------------------------------------------------------------
 def construir_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -225,6 +270,16 @@ def construir_parser() -> argparse.ArgumentParser:
     alcance.add_argument("modelo", help="nome do modelo (ex.: stg_pedidos)")
     alcance.add_argument("--manifest", default=MANIFEST_PADRAO)
     alcance.set_defaults(func=cmd_alcance)
+
+    diagnosticar_cmd = sub.add_parser(
+        "diagnosticar", help="hipóteses de causa raiz para um incidente"
+    )
+    diagnosticar_cmd.add_argument("id", nargs="?", type=int, default=None,
+                                  help="id do incidente (padrão: o aberto mais recente)")
+    diagnosticar_cmd.add_argument("--provider", default="auto",
+                                  choices=["auto", "regras", "llm"])
+    diagnosticar_cmd.add_argument("--manifest", default=MANIFEST_PADRAO)
+    diagnosticar_cmd.set_defaults(func=cmd_diagnosticar)
 
     return parser
 

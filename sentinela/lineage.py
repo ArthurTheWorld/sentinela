@@ -98,3 +98,27 @@ def severidade_por_alcance(alcance: list[str], critico: bool = False) -> Severid
     if alcance:
         return Severidade.MEDIA
     return Severidade.BAIXA
+
+
+def upstream(manifest: dict[str, Any] | None, modelo: str) -> list[str]:
+    """Modelos dos quais `modelo` depende (o inverso do blast radius).
+
+    É o que o diagnóstico precisa: se `fct_vendas` está com problema, o
+    suspeito natural está em `stg_pedidos` e `stg_pagamentos`.
+    """
+    if not manifest:
+        return []
+
+    indices = _indice_modelos(manifest)
+    if modelo not in indices:
+        return []
+
+    alvo = indices[modelo]
+    grafo = construir_grafo(manifest)
+    por_id = {uid: nome for nome, uid in indices.items()}
+
+    return sorted(
+        por_id[origem]
+        for origem, destinos in grafo.items()
+        if alvo in destinos and origem in por_id
+    )

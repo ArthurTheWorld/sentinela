@@ -18,7 +18,9 @@ Rodar "2. Injetando apagao (some com ontem e hoje)" "python -m simulator.falhas 
 
 Rodar "3. Reconstruindo dbt e verificando" "dbt run --profiles-dir dbt --project-dir dbt && python -m sentinela run --ignorar-erros"
 
-Write-Host "`n>>> Abra http://localhost:8501 e veja o incidente aberto." -ForegroundColor Yellow
+Rodar "3b. Diagnóstico assistido do incidente" "python -m sentinela diagnosticar"
+
+Write-Host "`n>>> Abra http://localhost:8501 e veja o incidente aberto e o diagnóstico." -ForegroundColor Yellow
 Read-Host "Pressione ENTER para reparar e medir o MTTR"
 
 Rodar "4. Reparando" "python -m simulator.falhas reparar"

@@ -11,3 +11,5 @@ dbt/logs/
 .idea/
 .DS_Store
 dbt/.user.yml
+pytest-of-*/
+pytest-*/

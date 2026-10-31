@@ -164,6 +164,32 @@ elif pagina == "Incidentes":
                 else:
                     st.write("**Alcance:** nenhum modelo downstream")
 
+                diagnostico = linha.get("diagnosis")
+                if isinstance(diagnostico, str):
+                    try:
+                        diagnostico = json.loads(diagnostico)
+                    except json.JSONDecodeError:
+                        diagnostico = None
+
+                if diagnostico and diagnostico.get("hipoteses"):
+                    st.divider()
+                    st.caption(f"Diagnóstico assistido · motor: {diagnostico.get('provider', '-')}")
+                    for posicao, hipotese in enumerate(diagnostico["hipoteses"], start=1):
+                        st.markdown(
+                            f"**{posicao}. [{hipotese.get('confianca', 0):.0%}]** "
+                            f"{hipotese.get('causa', '')}"
+                        )
+                        if hipotese.get("evidencia"):
+                            st.caption(f"evidência: {hipotese['evidencia']}")
+                        if hipotese.get("acao"):
+                            st.caption(f"ação: {hipotese['acao']}")
+                        if hipotese.get("runbook"):
+                            st.caption(f"runbook: {hipotese['runbook']}")
+                else:
+                    st.caption(
+                        f"Sem diagnóstico ainda — rode: `sentinela diagnosticar {linha['id']}`"
+                    )
+
     st.divider()
     st.subheader("Histórico")
     if todos.empty:

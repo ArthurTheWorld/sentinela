@@ -149,7 +149,48 @@ sentinela run                 # executa todos os contratos
 sentinela status              # estado atual
 sentinela incidentes --todos  # histórico + MTTR
 sentinela alcance stg_pedidos # blast radius via lineage do dbt
+sentinela diagnosticar        # hipóteses de causa raiz (último incidente aberto)
 ```
+
+---
+
+## Diagnóstico assistido
+
+Detectar não resolve: alguém precisa descobrir **por quê**. O `diagnosticar`
+monta o contexto do incidente (check, valor, histórico, sinais vizinhos do
+mesmo dataset, blast radius e modelos upstream) e devolve hipóteses
+ranqueadas — cada uma com evidência, ação e runbook.
+
+```
+Incidente #16 — stg_pedidos :: volume
+Severidade: media   Motor: regras
+Impacto: fct_vendas, mart_receita_diaria
+
+1. [92%] Interrupção total da ingestão (origem ou scheduler)
+   evidência: volume e frescor falharam no mesmo dataset, na mesma execução
+   ação:      Verificar o job de ingestão e o scheduler antes de mexer no dbt
+   runbook:   docs/runbooks/volume-caiu.md
+2. [85%] Origem sem dados no período (ingestão interrompida)
+   evidência: queda de 100% contra o baseline sazonal
+```
+
+**Dois motores, de propósito:**
+
+| Motor | Quando roda | Precisa de quê |
+|---|---|---|
+| `regras` (padrão) | sempre | nada — heurísticas offline |
+| `llm` | se configurado | `SENTINELA_LLM_PROVIDER` + chave |
+
+```powershell
+# opcional: diagnóstico com LLM
+$env:SENTINELA_LLM_PROVIDER="openai"   # ou "gemini"
+$env:OPENAI_API_KEY="..."
+$env:SENTINELA_LLM_MODEL="gpt-4o-mini" # opcional
+```
+
+Se o LLM falhar (rede, cota, resposta inválida), o diagnóstico **cai para as
+regras** — diagnóstico é conveniência, não ponto único de falha. O resultado
+fica gravado no incidente (`diagnosis` jsonb) e aparece no dashboard.
 
 ---
 
@@ -164,6 +205,7 @@ sentinela/
 │   ├── anomalies.py        # mediana, MAD, baseline sazonal
 │   ├── lineage.py          # grafo a partir do manifest do dbt
 │   ├── incidents.py        # dedupe, severidade, ciclo de vida
+│   ├── diagnosis.py        # regras offline + LLM opcional
 │   ├── store.py            # persistência (meta.*)
 │   ├── runner.py           # orquestra uma run
 │   └── cli.py

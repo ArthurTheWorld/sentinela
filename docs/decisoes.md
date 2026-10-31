@@ -119,3 +119,34 @@ demonstrar detecção e MTTR em segundos.
 - (+) O valor do projeto é demonstrável, não afirmado
 - (+) Serve como teste de fumaça do próprio Sentinela
 - (−) Código extra que não é "produto" — aceitável em projeto de portfólio
+
+---
+
+## ADR-008 — Diagnóstico assistido: regras por padrão, LLM opcional
+
+**Contexto.** O projeto anterior (Pipeline Doctor) fazia diagnóstico de falha do
+Airflow com LLM. Fundir as duas ideias num só produto evita dois repositórios
+contando a mesma história — mas cria uma dependência: sem chave de API e sem
+rede, o diagnóstico deixaria de funcionar, e um portfólio precisa rodar em
+qualquer máquina.
+
+**Decisão.** Dois motores no mesmo comando `sentinela diagnosticar`:
+
+1. **Regras** (padrão): heurísticas determinísticas sobre tipo de check, valor
+   medido e sinais vizinhos do dataset. Sem rede, sem custo, testável.
+2. **LLM** (opt-in via `SENTINELA_LLM_PROVIDER`): recebe o mesmo contexto em
+   JSON e devolve hipóteses. Qualquer falha cai silenciosamente para as regras.
+
+**Consequências.**
+
+- (+) `git clone` + `docker compose up` funciona sem nenhuma credencial
+- (+) Regras são testáveis sem mock de rede (14 testes)
+- (+) LLM vira um upgrade, não um pré-requisito
+- (+) Fusão elimina a sobreposição com o Pipeline Doctor
+- (−) Manter duas implementações significa calibrar duas vezes
+- (−) As regras cobrem o que já vimos; causa exótica depende do LLM
+
+**Alternativa descartada.** Só LLM: mais impressionante na demo, mas quebra
+para quem clona sem chave — e o primeiro a testar seria justamente um
+recrutador.
+

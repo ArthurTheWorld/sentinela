@@ -57,8 +57,12 @@ create table if not exists {SCHEMA}.incident (
     opened_at    timestamptz not null default now(),
     last_seen_at timestamptz not null default now(),
     resolved_at  timestamptz,
-    mttr_seconds integer
+    mttr_seconds integer,
+    diagnosis    jsonb
 );
+
+-- Migração para bancos criados antes do diagnóstico assistido.
+alter table {SCHEMA}.incident add column if not exists diagnosis jsonb;
 
 create unique index if not exists uq_incident_aberto
     on {SCHEMA}.incident (fingerprint) where status = 'aberto';
@@ -194,7 +198,7 @@ def listar_incidentes(conn, *, apenas_abertos: bool = True, limite: int = 50) ->
     condicao = "where status = 'aberto'" if apenas_abertos else ""
     consulta = f"""
         select id, dataset, check_name, severity, status, title,
-               opened_at, last_seen_at, resolved_at, mttr_seconds, blast_radius
+               opened_at, last_seen_at, resolved_at, mttr_seconds, blast_radius, diagnosis
         from meta.incident
         {condicao}
         order by opened_at desc
@@ -246,3 +250,43 @@ def historico(conn, dataset: str, check: str, *, limite: int = 50) -> list[dict[
             (dataset, check, limite),
         )
         return [dict(linha) for linha in cur.fetchall()]
+
+
+def buscar_incidente(conn, incidente_id: int | None = None) -> dict[str, Any] | None:
+    """Busca um incidente por id ou, sem id, o aberto mais recente."""
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        if incidente_id is None:
+            cur.execute(
+                "select * from meta.incident where status = 'aberto' order by opened_at desc limit 1"
+            )
+        else:
+            cur.execute("select * from meta.incident where id = %s", (incidente_id,))
+        linha = cur.fetchone()
+    return dict(linha) if linha else None
+
+
+def ultimos_status_do_dataset(conn, dataset: str) -> dict[str, str]:
+    """Último status de cada verificação do dataset (sinais vizinhos)."""
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            select distinct on (check_name) check_name, status
+              from meta.check_result
+             where dataset = %s
+             order by check_name, executed_at desc
+            """,
+            (dataset,),
+        )
+        return {linha["check_name"]: linha["status"] for linha in cur.fetchall()}
+
+
+def salvar_diagnostico(conn, incidente_id: int, diagnostico: dict[str, Any]) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "update meta.incident set diagnosis = %s where id = %s",
+            (
+                Json(diagnostico, dumps=lambda obj: json.dumps(obj, default=str, ensure_ascii=False)),
+                incidente_id,
+            ),
+        )
+    conn.commit()

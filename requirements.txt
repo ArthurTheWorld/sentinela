@@ -1,5 +1,6 @@
 psycopg2-binary>=2.9,<3
 ruamel.yaml>=0.18,<0.19
+requests>=2.32,<3
 pandas>=2.2,<3
 streamlit>=1.40,<2
 dbt-postgres>=1.8,<2
