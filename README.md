@@ -1,5 +1,6 @@
 # Sentinela — confiabilidade de dados
 
+[![CI](https://github.com/ArthurTheWorld/sentinela/actions/workflows/ci.yml/badge.svg)](https://github.com/ArthurTheWorld/sentinela/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Postgres](https://img.shields.io/badge/Postgres-16-4169E1?logo=postgresql&logoColor=white)
 ![dbt](https://img.shields.io/badge/dbt-1.x-FF694B?logo=dbt&logoColor=white)
