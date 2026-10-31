@@ -1,0 +1,45 @@
+{
+  "metadata": { "dbt_version": "1.9.0" },
+  "nodes": {
+    "model.sentinela_demo.stg_pedidos": {
+      "name": "stg_pedidos",
+      "resource_type": "model",
+      "depends_on": { "nodes": ["source.sentinela_demo.loja.pedidos"] }
+    },
+    "model.sentinela_demo.stg_clientes": {
+      "name": "stg_clientes",
+      "resource_type": "model",
+      "depends_on": { "nodes": ["source.sentinela_demo.loja.clientes"] }
+    },
+    "model.sentinela_demo.stg_pagamentos": {
+      "name": "stg_pagamentos",
+      "resource_type": "model",
+      "depends_on": { "nodes": ["source.sentinela_demo.loja.pagamentos"] }
+    },
+    "model.sentinela_demo.dim_clientes": {
+      "name": "dim_clientes",
+      "resource_type": "model",
+      "depends_on": { "nodes": ["model.sentinela_demo.stg_clientes"] }
+    },
+    "model.sentinela_demo.fct_vendas": {
+      "name": "fct_vendas",
+      "resource_type": "model",
+      "depends_on": {
+        "nodes": [
+          "model.sentinela_demo.stg_pedidos",
+          "model.sentinela_demo.stg_pagamentos"
+        ]
+      }
+    },
+    "model.sentinela_demo.mart_receita_diaria": {
+      "name": "mart_receita_diaria",
+      "resource_type": "model",
+      "depends_on": { "nodes": ["model.sentinela_demo.fct_vendas"] }
+    }
+  },
+  "sources": {
+    "source.sentinela_demo.loja.pedidos": { "name": "pedidos" },
+    "source.sentinela_demo.loja.clientes": { "name": "clientes" },
+    "source.sentinela_demo.loja.pagamentos": { "name": "pagamentos" }
+  }
+}

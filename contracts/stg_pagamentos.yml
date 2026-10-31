@@ -1,0 +1,15 @@
+dataset: stg_pagamentos
+tabela: analytics.stg_pagamentos
+dono: time-financeiro
+descricao: "Pagamentos por pedido."
+checks:
+  freshness:
+    coluna: criado_em
+    aviso_apos: 3h
+    erro_apos: 8h
+  uniqueness:
+    colunas: [pagamento_id]
+  null_rate:
+    colunas: [metodo, valor_pago]
+    aviso_acima: 0.01
+    erro_acima: 0.03

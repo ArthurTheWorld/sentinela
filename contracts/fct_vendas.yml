@@ -1,0 +1,49 @@
+dataset: fct_vendas
+tabela: analytics.fct_vendas
+dono: time-vendas
+descricao: "Fato de vendas: uma linha por item de pedido, com pagamento."
+critico: true
+checks:
+  freshness:
+    coluna: criado_em
+    aviso_apos: 2h
+    erro_apos: 6h
+  volume:
+    coluna: criado_em
+    queda_aviso_pct: 30
+    queda_erro_pct: 60
+    semanas_base: 4
+  null_rate:
+    colunas: [cliente_id, valor]
+    aviso_acima: 0.01
+    erro_acima: 0.05
+  uniqueness:
+    colunas: [pedido_id, item_id]
+  schema:
+    # Contrato estrito: qualquer coluna nova quebra o consumidor até ser aprovada.
+    permitir_extras: false
+    colunas_esperadas:
+      - pedido_id
+      - item_id
+      - cliente_id
+      - valor
+      - quantidade
+      - status
+      - criado_em
+      - metodo_pagamento
+      - valor_pago
+  custom:
+    - nome: valor_negativo
+      descricao: "Nenhuma venda pode ter valor negativo."
+      sql: |
+        select count(*) from {{ tabela }} where valor < 0
+      erro_acima: 0
+      unidade: linhas
+    - nome: pagamento_sem_pedido
+      descricao: "Todo pagamento precisa apontar para um pedido existente."
+      sql: |
+        select count(*)
+        from {{ tabela }}
+        where metodo_pagamento is not null and pedido_id is null
+      erro_acima: 0
+      unidade: linhas

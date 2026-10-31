@@ -1,0 +1,13 @@
+dataset: stg_clientes
+tabela: analytics.stg_clientes
+dono: time-crm
+descricao: "Cadastro de clientes normalizado."
+checks:
+  uniqueness:
+    colunas: [cliente_id]
+  null_rate:
+    colunas: [nome, email]
+    aviso_acima: 0.01
+    erro_acima: 0.05
+  schema:
+    colunas_esperadas: [cliente_id, nome, email, cidade, uf, criado_em]

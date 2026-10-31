@@ -1,0 +1,29 @@
+dataset: mart_receita_diaria
+tabela: analytics.mart_receita_diaria
+dono: time-financeiro
+descricao: "Receita agregada por dia — alimenta o dashboard executivo."
+critico: true
+checks:
+  freshness:
+    coluna: atualizado_em
+    aviso_apos: 2h
+    erro_apos: 6h
+  volume:
+    coluna: dia
+    queda_aviso_pct: 30
+    queda_erro_pct: 60
+    semanas_base: 4
+  custom:
+    - nome: receita_negativa
+      descricao: "Receita diária não pode ser negativa."
+      sql: |
+        select count(*) from {{ tabela }} where receita < 0
+      erro_acima: 0
+      unidade: linhas
+    - nome: ticket_medio_incoerente
+      descricao: "Ticket médio não pode exceder a receita do dia."
+      sql: |
+        select count(*) from {{ tabela }}
+        where ticket_medio > receita and receita > 0
+      erro_acima: 0
+      unidade: linhas

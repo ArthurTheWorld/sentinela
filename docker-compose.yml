@@ -1,0 +1,74 @@
+name: sentinela
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  environment:
+    PGHOST: postgres
+    PGPORT: 5432
+    PGDATABASE: sentinela
+    PGUSER: sentinela
+    PGPASSWORD: sentinela
+  volumes:
+    - .:/app
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sentinela
+      POSTGRES_PASSWORD: sentinela
+      POSTGRES_DB: sentinela
+    ports:
+      - "5434:5432"
+    volumes:
+      - sentinela_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "sentinela", "-d", "sentinela"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    <<: *app
+    command: ["sleep", "infinity"]
+
+  scheduler:
+    <<: *app
+    command:
+      - bash
+      - -c
+      - |
+        while true; do
+          echo "=== $(date -u +%H:%M:%S) dbt run ==="
+          dbt run --profiles-dir dbt --project-dir dbt || echo "dbt falhou"
+          echo "=== $(date -u +%H:%M:%S) sentinela run ==="
+          python -m sentinela run || true
+          sleep ${INTERVALO_SEGUNDOS:-900}
+        done
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: sentinela
+      PGUSER: sentinela
+      PGPASSWORD: sentinela
+      INTERVALO_SEGUNDOS: ${INTERVALO_SEGUNDOS:-900}
+
+  dashboard:
+    <<: *app
+    command:
+      - streamlit
+      - run
+      - dashboard/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    ports:
+      - "8501:8501"
+
+volumes:
+  sentinela_pgdata:

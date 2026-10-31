@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: loja
+    description: "Banco transacional simulado do e-commerce."
+    schema: loja
+    tables:
+      - name: pedidos
+        columns:
+          - name: pedido_id
+            tests: [not_null]
+      - name: clientes
+        columns:
+          - name: cliente_id
+            tests: [not_null, unique]
+      - name: pagamentos
+        columns:
+          - name: pagamento_id
+            tests: [not_null, unique]

@@ -1,0 +1,27 @@
+dataset: stg_pedidos
+tabela: analytics.stg_pedidos
+dono: time-vendas
+descricao: "Pedidos normalizados, um item por linha."
+checks:
+  freshness:
+    coluna: updated_at
+    aviso_apos: 2h
+    erro_apos: 6h
+  volume:
+    coluna: criado_em
+    queda_aviso_pct: 30
+    queda_erro_pct: 60
+    semanas_base: 4
+  uniqueness:
+    colunas: [pedido_id, item_id]
+  schema:
+    colunas_esperadas:
+      - pedido_id
+      - item_id
+      - cliente_id
+      - produto_id
+      - quantidade
+      - valor
+      - status
+      - criado_em
+      - updated_at
