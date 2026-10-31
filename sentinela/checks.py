@@ -29,15 +29,26 @@ class IdentificadorInvalido(ValueError):
     """Nome de tabela/coluna fora do padrão — evita injeção de SQL."""
 
 
-def referenciar(tabela: str) -> sql.Composed:
-    """Converte 'schema.tabela' em SQL seguro (identificadores citados)."""
+def validar_tabela(tabela: str) -> tuple[str, str]:
+    """Valida 'schema.tabela' e devolve as duas partes.
+
+    Exigimos exatamente duas partes: contratos sempre apontam para um schema
+    explícito, então um nome solto é erro de configuração — e não deve cair no
+    `search_path` do banco sem ninguém perceber.
+    """
     partes = tabela.split(".")
-    if not partes or len(partes) > 2:
+    if len(partes) != 2:
         raise IdentificadorInvalido(f"Tabela inválida: {tabela!r} (use schema.tabela).")
     for parte in partes:
         if not _IDENTIFICADOR.match(parte):
             raise IdentificadorInvalido(f"Identificador inválido: {parte!r}")
-    return sql.SQL(".").join(sql.Identifier(parte) for parte in partes)
+    return partes[0], partes[1]
+
+
+def referenciar(tabela: str) -> sql.Composed:
+    """Converte 'schema.tabela' em SQL seguro (identificadores citados)."""
+    schema, nome = validar_tabela(tabela)
+    return sql.SQL("{}.{}").format(sql.Identifier(schema), sql.Identifier(nome))
 
 
 def classificar(
